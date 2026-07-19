@@ -8,7 +8,7 @@ A physics-informed, end-to-end machine learning and data engineering pipeline de
 
 This project treats driver style modeling as a **supervised multi-output regression task**. Instead of classifying drivers into rigid binary buckets, our pipeline maps behavior across a continuous spectrum ($0.0$ to $1.0$) across three distinct physics-informed dimensions:
 
-1. **Aggression Score:** Evaluates input jerk variance via the temporal derivatives of throttle and brake modulation ($d(\text{input})/dt$).
+1. **Aggression Score:** Evaluates input jerk variance via the temporal derivatives of throttle and brake modulation ($\frac{d(\text{input})}{dt}$).
 2. **Line Shape Score:** Quantifies the geometric transition through a corner, distinguishing U-shaped (high mid-corner rolling speed) from V-shaped (late braking, sharp apex rotation) racing lines.
 3. **Vehicle Balance Preference:** Isolates a driver's handling tolerance between stable understeer and a hyper-responsive, loose oversteer platform by mapping calculated lateral forces against internal accelerometer sensors.
 
@@ -70,7 +70,7 @@ Clone the repository and spin up a localized virtual environment within your ter
 
 ```bash
 # Clone the project repository
-git clone [https://github.com/yourusername/f1-telemetry-ml.git](https://github.com/yourusername/f1-telemetry-ml.git)
+git clone https://github.com/yourusername/f1-telemetry-ml.git
 cd f1-telemetry-ml
 
 # Create a virtual environment named 'venv'
