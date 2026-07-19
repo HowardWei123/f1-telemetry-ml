@@ -216,3 +216,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Project data and heavy API streams
+fastf1_data/
+fastf1_cache/
+models/
