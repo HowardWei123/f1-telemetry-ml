@@ -27,7 +27,8 @@ from scipy.signal import savgol_filter
 RAW_DATA_DIR = "fastf1_data/raw"
 PROCESSED_DATA_DIR = "fastf1_data/processed"
 
-WINDOW_METERS = 50   # how far before/after the corner marker to include
+WINDOW_METERS_BEFORE = 200   # braking zones typically start well before the corner marker
+WINDOW_METERS_AFTER = 100    # exit/acceleration phase needs less room
 SMOOTH_WINDOW = 15   # Savitzky-Golay smoothing window (must be odd)
 SMOOTH_POLYORDER = 2
 
@@ -39,17 +40,16 @@ def get_corner_markers(year: int, race_name: str) -> pd.DataFrame:
     which we pull from the qualifying session for that race weekend.
     """
     session = fastf1.get_session(year, race_name, "Q")
-    session.load(telemetry=True, laps=True)
+    session.load(telemetry=True, laps=True)  # both needed: get_circuit_info() computes marker distances from telemetry
     circuit_info = session.get_circuit_info()
     return circuit_info.corners  # has 'Distance' and 'Number' columns
 
 
-def smooth_channel(series: np.ndarray) -> np.ndarray:
-    """Savitzky-Golay smoothing — reduces sensor noise before any
-    downstream derivative calculations (used later in heuristic_engine.py)."""
+def smooth_channel(series: np.ndarray, min_val=0, max_val=100) -> np.ndarray:
     if len(series) < SMOOTH_WINDOW:
-        return series  # too few points in this window to smooth meaningfully
-    return savgol_filter(series, window_length=SMOOTH_WINDOW, polyorder=SMOOTH_POLYORDER)
+        return series
+    smoothed = savgol_filter(series, window_length=SMOOTH_WINDOW, polyorder=SMOOTH_POLYORDER)
+    return np.clip(smoothed, min_val, max_val)
 
 
 def segment_lap_into_corners(lap_telemetry: pd.DataFrame, corner_markers: pd.DataFrame) -> list:
@@ -60,8 +60,8 @@ def segment_lap_into_corners(lap_telemetry: pd.DataFrame, corner_markers: pd.Dat
     segments = []
     for _, corner in corner_markers.iterrows():
         center = corner["Distance"]
-        mask = (lap_telemetry["Distance"] >= center - WINDOW_METERS) & \
-               (lap_telemetry["Distance"] <= center + WINDOW_METERS)
+        mask = (lap_telemetry["Distance"] >= center - WINDOW_METERS_BEFORE) & \
+               (lap_telemetry["Distance"] <= center + WINDOW_METERS_AFTER)
         segment = lap_telemetry[mask].copy()
 
         if len(segment) < 5:
