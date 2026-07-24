@@ -128,27 +128,68 @@ def filter_valid_laps(df: pd.DataFrame) -> pd.DataFrame:
     only laps within MAX_LAPTIME_RATIO of that driver's fastest lap in
     this session. This is a simple heuristic, not perfect — safety car
     laps / red flags may still slip through, worth spot-checking results.
+
+    NOTE: grouping includes year/race/session_type so laps aren't
+    accidentally compared/merged across different races or sessions.
     """
     df = df.copy()
     df["SessionTime"] = pd.to_timedelta(df["SessionTime"])
-    lap_times = df.groupby(["driver", "lap_number"])["SessionTime"].agg(lambda x: x.max() - x.min())
+
+    group_keys = ["year", "race", "session_type", "driver", "lap_number"]
+    lap_times = df.groupby(group_keys)["SessionTime"].agg(lambda x: x.max() - x.min())
     lap_times = lap_times.reset_index(name="lap_duration")
 
     valid_laps = []
-    for driver, group in lap_times.groupby("driver"):
+    for keys, group in lap_times.groupby(["year", "race", "session_type", "driver"]):
         fastest = group["lap_duration"].min()
         threshold = fastest * MAX_LAPTIME_RATIO
         keep = group[group["lap_duration"] <= threshold]
         valid_laps.append(keep)
 
     valid_laps_df = pd.concat(valid_laps, ignore_index=True)
-    valid_keys = set(zip(valid_laps_df["driver"], valid_laps_df["lap_number"]))
+    valid_keys = set(zip(
+        valid_laps_df["year"], valid_laps_df["race"], valid_laps_df["session_type"],
+        valid_laps_df["driver"], valid_laps_df["lap_number"]
+    ))
 
-    mask = df.apply(lambda row: (row["driver"], row["lap_number"]) in valid_keys, axis=1)
+    mask = df.apply(
+        lambda row: (row["year"], row["race"], row["session_type"], row["driver"], row["lap_number"]) in valid_keys,
+        axis=1
+    )
     return df[mask]
 
 
 def generate_labels(segmented_df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Compute raw + normalized style scores for every
+    (year, race, session_type, driver, lap, corner) group in the given
+    segmented DataFrame.
+    """
+    filtered = filter_valid_laps(segmented_df)
+
+    records = []
+    for (year, race, session_type, driver, lap_num, corner_num), group in filtered.groupby(
+        ["year", "race", "session_type", "driver", "lap_number", "corner_number"]
+    ):
+        records.append({
+            "year": year,
+            "race": race,
+            "session_type": session_type,
+            "driver": driver,
+            "lap_number": lap_num,
+            "corner_number": corner_num,
+            "aggression_raw": compute_aggression_score(group),
+            "line_shape_raw": compute_line_shape_score(group),
+            "oversteer_raw": compute_oversteer_proxy(group),
+        })
+
+    labels_df = pd.DataFrame(records).dropna()
+
+    labels_df["aggression_score"] = normalize_log_scale(labels_df["aggression_raw"])
+    labels_df["line_shape_score"] = normalize_percentile_clip(labels_df["line_shape_raw"])
+    labels_df["oversteer_preference_score"] = normalize_percentile_clip(labels_df["oversteer_raw"])
+
+    return labels_df
     """
     Compute raw + normalized style scores for every (driver, lap, corner)
     group in the given segmented DataFrame.
@@ -156,8 +197,8 @@ def generate_labels(segmented_df: pd.DataFrame) -> pd.DataFrame:
     filtered = filter_valid_laps(segmented_df)
 
     records = []
-    for (driver, lap_num, corner_num), group in filtered.groupby(
-        ["driver", "lap_number", "corner_number"]
+    for (year, race, session_type, driver, lap_num, corner_num), group in filtered.groupby(
+    ["year", "race", "session_type", "driver", "lap_number", "corner_number"]
     ):
         records.append({
             "driver": driver,
