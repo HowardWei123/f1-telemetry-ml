@@ -190,35 +190,6 @@ def generate_labels(segmented_df: pd.DataFrame) -> pd.DataFrame:
     labels_df["oversteer_preference_score"] = normalize_percentile_clip(labels_df["oversteer_raw"])
 
     return labels_df
-    """
-    Compute raw + normalized style scores for every (driver, lap, corner)
-    group in the given segmented DataFrame.
-    """
-    filtered = filter_valid_laps(segmented_df)
-
-    records = []
-    for (year, race, session_type, driver, lap_num, corner_num), group in filtered.groupby(
-    ["year", "race", "session_type", "driver", "lap_number", "corner_number"]
-    ):
-        records.append({
-            "driver": driver,
-            "lap_number": lap_num,
-            "corner_number": corner_num,
-            "session_type": group["session_type"].iloc[0],
-            "year": group["year"].iloc[0],
-            "race": group["race"].iloc[0],
-            "aggression_raw": compute_aggression_score(group),
-            "line_shape_raw": compute_line_shape_score(group),
-            "oversteer_raw": compute_oversteer_proxy(group),
-        })
-
-    labels_df = pd.DataFrame(records).dropna()
-
-    labels_df["aggression_score"] = normalize_log_scale(labels_df["aggression_raw"])
-    labels_df["line_shape_score"] = normalize_percentile_clip(labels_df["line_shape_raw"])
-    labels_df["oversteer_preference_score"] = normalize_percentile_clip(labels_df["oversteer_raw"])
-
-    return labels_df
 
 
 def run_labeling(force: bool = False):
