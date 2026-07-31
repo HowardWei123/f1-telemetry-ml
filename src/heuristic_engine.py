@@ -92,7 +92,7 @@ def compute_oversteer_proxy(corner_df: pd.DataFrame) -> float:
         return np.nan
 
     decel_rate = np.min(np.gradient(speed))
-    return float(decel_rate)
+    return float(-decel_rate)
 
 
 def normalize_log_scale(series: pd.Series) -> pd.Series:
