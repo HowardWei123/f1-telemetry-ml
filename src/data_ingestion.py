@@ -59,8 +59,9 @@ def fetch_session_telemetry(year: int, location: str, session_type: str = "R") -
                 if telemetry.empty:
                     continue
 
+                # Preserve SessionTime as string timedelta format so pandas parses it cleanly on load
                 df_telemetry = pd.DataFrame({
-                    "SessionTime": telemetry["SessionTime"].dt.total_seconds(),
+                    "SessionTime": telemetry["SessionTime"].astype(str),
                     "Distance": telemetry["Distance"],
                     "Speed": telemetry["Speed"],
                     "Throttle": telemetry["Throttle"],
@@ -73,6 +74,11 @@ def fetch_session_telemetry(year: int, location: str, session_type: str = "R") -
                     "year": year,
                     "race": location
                 })
+
+                # Include SteeringAngle if FastF1 dataset contains it
+                if "SteeringAngle" in telemetry.columns:
+                    df_telemetry["SteeringAngle"] = telemetry["SteeringAngle"]
+
                 all_laps_telemetry.append(df_telemetry)
             except Exception:
                 continue
