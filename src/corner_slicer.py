@@ -39,7 +39,7 @@ def get_corner_markers(year: int, race_name: str) -> pd.DataFrame:
     from the start/finish line). FastF1 exposes this via circuit info,
     which we pull from the qualifying session for that race weekend.
     """
-    session = fastf1.get_session(year, race_name, "Q")
+    session = fastf1.get_session(year, race_name, "R")
     session.load(telemetry=True, laps=True)  # both needed: get_circuit_info() computes marker distances from telemetry
     circuit_info = session.get_circuit_info()
     return circuit_info.corners  # has 'Distance' and 'Number' columns

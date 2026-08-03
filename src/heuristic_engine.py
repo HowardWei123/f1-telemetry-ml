@@ -123,26 +123,25 @@ def normalize_percentile_clip(series: pd.Series, lower_pct=1, upper_pct=99) -> p
 
 
 def filter_valid_laps(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Drop out-laps, in-laps, and other non-representative laps by keeping
-    only laps within MAX_LAPTIME_RATIO of that driver's fastest lap in
-    this session. This is a simple heuristic, not perfect — safety car
-    laps / red flags may still slip through, worth spot-checking results.
-
-    NOTE: grouping includes year/race/session_type so laps aren't
-    accidentally compared/merged across different races or sessions.
-    """
     df = df.copy()
-    if "SessionTime" not in df.columns:
-        raise ValueError(
-            "filter_valid_laps requires a 'SessionTime' column to compute lap "
-            "duration, but it was not found in the input DataFrame."
-        )
-    df["SessionTime"] = pd.to_timedelta(df["SessionTime"])
+    
+    # Check for possible timestamp columns in FastF1 exports
+    time_col = None
+    for col in ["SessionTime", "Time", "Date"]:
+        if col in df.columns:
+            time_col = col
+            break
+            
+    if time_col is None:
+        # If no time column exists, skip filtering or raise a helpful message
+        print("Warning: No timing column found. Skipping valid lap filtering.")
+        return df
+
+    df["_TimeDelta"] = pd.to_timedelta(df[time_col])
 
 
     group_keys = ["year", "race", "session_type", "driver", "lap_number"]
-    lap_times = df.groupby(group_keys)["SessionTime"].agg(lambda x: x.max() - x.min())
+    lap_times = df.groupby(group_keys)["_TimeDelta"].agg(lambda x: x.max() - x.min())
     lap_times = lap_times.reset_index(name="lap_duration")
 
     valid_laps = []
@@ -162,7 +161,9 @@ def filter_valid_laps(df: pd.DataFrame) -> pd.DataFrame:
         lambda row: (row["year"], row["race"], row["session_type"], row["driver"], row["lap_number"]) in valid_keys,
         axis=1
     )
-    return df[mask]
+    
+    # Clean up temporary column before returning
+    return df[mask].drop(columns=["_TimeDelta"])
 
 
 def generate_labels(segmented_df: pd.DataFrame) -> pd.DataFrame:
