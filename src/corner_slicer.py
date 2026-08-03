@@ -45,11 +45,15 @@ def get_corner_markers(year: int, race_name: str) -> pd.DataFrame:
     return circuit_info.corners  # has 'Distance' and 'Number' columns
 
 
-def smooth_channel(series: np.ndarray, min_val=0, max_val=100) -> np.ndarray:
+def smooth_channel(series: np.ndarray, min_val=0, max_val=None) -> np.ndarray:
     if len(series) < SMOOTH_WINDOW:
         return series
     smoothed = savgol_filter(series, window_length=SMOOTH_WINDOW, polyorder=SMOOTH_POLYORDER)
-    return np.clip(smoothed, min_val, max_val)
+    if max_val is not None:
+        smoothed = np.clip(smoothed, min_val, max_val)
+    else:
+        smoothed = np.clip(smoothed, min_val, None)  # only enforce a lower bound
+    return smoothed
 
 
 def segment_lap_into_corners(lap_telemetry: pd.DataFrame, corner_markers: pd.DataFrame) -> list:
@@ -67,8 +71,15 @@ def segment_lap_into_corners(lap_telemetry: pd.DataFrame, corner_markers: pd.Dat
         if len(segment) < 5:
             continue  # not enough points captured for this corner on this lap, skip it
 
+        CHANNEL_BOUNDS = {
+            "Throttle": (0, 100),
+            "Brake": (0, 100),
+            "Speed": (0, None),  # km/h has no fixed practical upper bound
+        }
+
         for col in ["Throttle", "Brake", "Speed"]:
-            segment[f"{col}_smooth"] = smooth_channel(segment[col].to_numpy())
+            min_val, max_val = CHANNEL_BOUNDS[col]
+            segment[f"{col}_smooth"] = smooth_channel(segment[col].to_numpy(), min_val=min_val, max_val=max_val)
 
         segment["corner_number"] = corner["Number"]
         segments.append(segment)

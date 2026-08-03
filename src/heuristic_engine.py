@@ -68,7 +68,7 @@ def compute_line_shape_score(corner_df: pd.DataFrame) -> float:
     the corner). Closer to 0.0 = V-shaped (late braking, low apex speed,
     sharp acceleration out).
     """
-    speed = corner_df.sort_values("Distance")["Speed"].to_numpy()
+    speed = corner_df.sort_values("Distance")["Speed_smooth"].to_numpy()
     if len(speed) < 3:
         return np.nan
 
@@ -92,7 +92,7 @@ def compute_oversteer_proxy(corner_df: pd.DataFrame) -> float:
         return np.nan
 
     decel_rate = np.min(np.gradient(speed))
-    return float(decel_rate)
+    return float(-decel_rate)
 
 
 def normalize_log_scale(series: pd.Series) -> pd.Series:
@@ -133,7 +133,13 @@ def filter_valid_laps(df: pd.DataFrame) -> pd.DataFrame:
     accidentally compared/merged across different races or sessions.
     """
     df = df.copy()
+    if "SessionTime" not in df.columns:
+        raise ValueError(
+            "filter_valid_laps requires a 'SessionTime' column to compute lap "
+            "duration, but it was not found in the input DataFrame."
+        )
     df["SessionTime"] = pd.to_timedelta(df["SessionTime"])
+
 
     group_keys = ["year", "race", "session_type", "driver", "lap_number"]
     lap_times = df.groupby(group_keys)["SessionTime"].agg(lambda x: x.max() - x.min())

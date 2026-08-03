@@ -38,21 +38,26 @@ def setup_cache():
 
 
 def fetch_session_telemetry(year: int, race_name: str, session_type: str) -> pd.DataFrame:
-    """
-    Pull lap-by-lap telemetry for every driver in one session.
-
-    Returns a single DataFrame with one row per telemetry sample, tagged
-    with driver, lap number, session type, year, and race name.
-    """
     session = fastf1.get_session(year, race_name, session_type)
     session.load(telemetry=True, laps=True, weather=False)
 
     all_driver_data = []
+    skipped_flat = 0
     for drv in session.drivers:
         driver_laps = session.laps.pick_drivers(drv)
         for _, lap in driver_laps.iterlaps():
             try:
                 tel = lap.get_car_data().add_distance()
+
+                # Sanity check: real telemetry should have meaningful speed
+                # variation. A near-constant Speed channel (e.g. FastF1
+                # silently returning placeholder/degraded data instead of
+                # raising when telemetry truly failed to load) would
+                # otherwise slip through the try/except below undetected.
+                if tel["Speed"].std() < 1.0:
+                    skipped_flat += 1
+                    continue
+
                 tel["driver"] = drv
                 tel["lap_number"] = lap["LapNumber"]
                 tel["session_type"] = session_type
@@ -60,10 +65,11 @@ def fetch_session_telemetry(year: int, race_name: str, session_type: str) -> pd.
                 tel["race"] = race_name
                 all_driver_data.append(tel)
             except Exception as e:
-                # Some laps have missing/corrupt telemetry (in/out laps,
-                # red flags, etc.) — skip and keep going rather than crash.
                 print(f"  Skipped lap {lap['LapNumber']} for {drv}: {e}")
                 continue
+
+    if skipped_flat:
+        print(f"  Skipped {skipped_flat} laps with suspiciously flat/placeholder telemetry")
 
     if not all_driver_data:
         return pd.DataFrame()
