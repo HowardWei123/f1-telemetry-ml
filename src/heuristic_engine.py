@@ -139,6 +139,7 @@ def filter_valid_laps(df: pd.DataFrame) -> pd.DataFrame:
 
     df["_TimeDelta"] = pd.to_timedelta(df[time_col])
 
+
     group_keys = ["year", "race", "session_type", "driver", "lap_number"]
     lap_times = df.groupby(group_keys)["_TimeDelta"].agg(lambda x: x.max() - x.min())
     lap_times = lap_times.reset_index(name="lap_duration")
