@@ -10,7 +10,7 @@ This project treats driver style modeling as a **supervised multi-output regress
 
 1. **Aggression Score:** Measures throttle modulation jerk variance $$\left(\frac{d(\text{Throttle})}{dt}\right)$$. Higher values indicate abrupt, aggressive pedal inputs.
 2. **Line Shape Score:** Quantifies cornering geometry as the ratio of minimum apex speed to average entry/exit speed ($\frac{v_{\text{min}}}{\bar{v}_{\text{entry, exit}}}$), distinguishing $U$-shaped momentum lines (closer to $1.0$) from $V$-shaped late-braking lines (closer to $0.0$).
-3. **Oversteer Preference Score:** Serves as a simplified mid-corner handling instability proxy based on peak longitudinal deceleration rates ($-\min\left(\frac{dv}{dt}\right)$).
+3. **Oversteer Preference Score:** Serves as a simplified mid-corner handling instability proxy based on peak longitudinal deceleration rates ($$-\min\left(\frac{dv}{dt}\right)$$).
 
 ### Key Data & Evaluation Strategy
 - **2024 Race Sessions Only:** Focuses exclusively on Grand Prix Race (`'R'`) sessions across 10 diverse circuit geometries (*Austin, Austria, Bahrain, Belgium, Jeddah, Monaco, Monza, Silverstone, Singapore, and Suzuka*).
